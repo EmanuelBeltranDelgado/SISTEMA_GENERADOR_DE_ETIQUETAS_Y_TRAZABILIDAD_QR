@@ -8,6 +8,7 @@ de stock, reubicación y exportación a PNG/PDF.
 """
 
 import os
+from pathlib import Path
 import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -16,6 +17,7 @@ from psycopg2 import sql
 
 from config.database import get_db_connection
 from utils.qr_generator import QRGenerator
+from utils.barcode_generator import BarcodeGenerator
 from utils.validators import es_numero_valido
 
 class TabRecepcion:
@@ -165,27 +167,88 @@ class TabRecepcion:
     def render_etiqueta(self, datos):
         """
         Dibuja con Pillow la maquetación física de la etiqueta de Recepción (Proporción 60x40 mm).
-        Renders: Encabezados, textos de datos, código QR incrustado y borde.
+        Renders: Logotipo PNG, Código de Barras (P/N), textos de datos, cuadro FIFO, código QR e imagen completa.
         """
         width, height = 600, 400
         img = Image.new('RGB', (width, height), color='white')
         d = ImageDraw.Draw(img)
 
         try:
-            title_font = ImageFont.truetype("arialbd.ttf", 22)
-            medium_bold = ImageFont.truetype("arialbd.ttf", 18)
+            medium_bold = ImageFont.truetype("arialbd.ttf", 17)
             small_font = ImageFont.truetype("arial.ttf", 15)
         except:
-            title_font = medium_bold = small_font = ImageFont.load_default()
+            medium_bold = small_font = ImageFont.load_default()
 
         margin = 15
 
-        d.text((margin + 100, margin), "Medusa Electronic S.A de C.V", fill='black', font=title_font)
+        # --- 1. LOGOTIPO PNG (ESQUINA SUPERIOR DERECHA) ---
+        dir_base = Path(__file__).resolve().parent.parent
         
-        pn_texto = f"P/N : {datos['PN']}"
-        d.text((margin, margin + 44), pn_texto[:28], fill='black', font=medium_bold)
+        posibles_rutas = [
+            dir_base / "Medusa_Logo_Sin_Fondo.png",
+            dir_base / "assets" / "logo.png",
+            dir_base / "logo.png"
+        ]
 
-        y = margin + 80
+        logo_path = None
+        for ruta in posibles_rutas:
+            if ruta.exists():
+                logo_path = ruta
+                break
+
+        if logo_path:
+            logo_img = Image.open(logo_path).convert("RGBA")
+            logo_width = 180
+            aspect_ratio = logo_img.height / logo_img.width
+            logo_height = int(logo_width * aspect_ratio)
+            logo_resized = logo_img.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
+            
+            logo_x = width - margin - logo_width - 10
+            logo_y = margin
+            img.paste(logo_resized, (logo_x, logo_y), logo_resized)
+
+        # --- 2. CÓDIGO DE BARRAS P/N (REPOSICIONADO INTERMEDIO) ---
+        pn_val = str(datos.get('PN', '')).strip()
+        if pn_val:
+            try:
+                # Generar las barras mediante el helper BarcodeGenerator
+                bc_pil = BarcodeGenerator.generar_codigo_barras(pn_val)
+                
+                # Dimensiones y posición del recuadro del código de barras
+                box_w, box_h = 235, 85
+                box_x1 = width - margin - box_w - 5
+                
+                # Posición Y ajustada para subirlo un poco sin invadir el logo
+                box_y1 = margin + 80  # Coordenada Y = 95px
+                box_x2 = box_x1 + box_w
+                box_y2 = box_y1 + box_h
+
+                # Recuadro negro exterior
+                d.rectangle((box_x1, box_y1, box_x2, box_y2), outline="black", width=2)
+
+                # Ajustar tamaño e incrustar la imagen de las barras
+                bc_resized = bc_pil.resize((box_w - 20, 42), Image.Resampling.LANCZOS)
+                bc_x = box_x1 + (box_w - bc_resized.width) // 2
+                bc_y = box_y1 + 8
+                
+                # Soportar canal Alfa si existe
+                if bc_resized.mode == 'RGBA':
+                    img.paste(bc_resized, (bc_x, bc_y), bc_resized)
+                else:
+                    img.paste(bc_resized, (bc_x, bc_y))
+
+                # Texto "P/N : [VALOR]" centrado debajo de las barras
+                pn_texto_display = f"P/N : {pn_val}"
+                bbox = d.textbbox((0, 0), pn_texto_display, font=medium_bold)
+                text_w = bbox[2] - bbox[0]
+                text_x = box_x1 + (box_w - text_w) // 2
+                text_y = box_y1 + 55
+                d.text((text_x, text_y), pn_texto_display, fill='black', font=medium_bold)
+            except Exception as e:
+                print(f"Error generando código de barras: {e}")
+
+        # --- 3. LISTA DE DATOS DEL MATERIAL (COLUMNA IZQUIERDA) ---
+        y = margin + 15
         spacing = 24
         
         items = [
@@ -207,14 +270,27 @@ class TabRecepcion:
             d.text((margin, y), f"{label}: {val}"[:28], fill='black', font=small_font)
             y += spacing
 
-        qr_content = (f"ID-REC: {datos['id_recepcion']}\nID-REC-ERP: {datos['id_recepcion_erpnext']}\nCANT: {datos['cantidad']}\nLOTE: {datos['lote']}\nUBIC: {datos['ubicacion']}\nEST: {datos['estado']}\nTIPO-ING: {datos['tipo_ingreso']}\nFECHA-REC: {datos['f_recepcion']}\nFECHA-CAD: {datos['f_caducidad']}\nCAR-ESP: {datos['caracteristicas_especiales']}")
+        # --- 4. RECUADRO "FIFO: []" DEBAJO DE FECHA CAD ---
+        d.text((margin, y), "FIFO: ", fill='black', font=small_font)
+        box_x1_fifo = margin + 50
+        box_y1_fifo = y - 2
+        box_size = 22
+        d.rectangle((box_x1_fifo, box_y1_fifo, box_x1_fifo + box_size, box_y1_fifo + box_size), outline="black", width=2)
+
+        # --- 5. CÓDIGO QR (ESQUINA INFERIOR DERECHA) ---
+        qr_content = (f"ID-REC: {datos['id_recepcion']}\nID-REC-ERP: {datos['id_recepcion_erpnext']}\n"
+                      f"CANT: {datos['cantidad']}\nLOTE: {datos['lote']}\nUBIC: {datos['ubicacion']}\n"
+                      f"EST: {datos['estado']}\nTIPO-ING: {datos['tipo_ingreso']}\n"
+                      f"FECHA-REC: {datos['f_recepcion']}\nFECHA-CAD: {datos['f_caducidad']}\n"
+                      f"CAR-ESP: {datos['caracteristicas_especiales']}")
         
-        qr_size = int(height * 0.42)
+        qr_size = int(height * 0.40)
         qr_img = QRGenerator.make(qr_content, box_size=8)
         qr_img = qr_img.resize((qr_size, qr_size), Image.Resampling.NEAREST)
         
-        img.paste(qr_img, (width - qr_size - margin - 5, height - qr_size - margin - 20))
+        img.paste(qr_img, (width - qr_size - margin - 5, height - qr_size - margin - 15))
 
+        # --- 6. DESCRIPCIÓN AL PIE Y BORDE EXTERIOR ---
         if datos['descripcion']:
             d.text((margin, height - 25), datos['descripcion'][:35], fill='black', font=small_font)
 
@@ -661,7 +737,6 @@ class TabRecepcion:
             finally:
                 conn.close()
 
-        # Limpieza de archivos temporales de imagen
         for tmp in temp_files:
             if os.path.exists(tmp):
                 os.remove(tmp)
