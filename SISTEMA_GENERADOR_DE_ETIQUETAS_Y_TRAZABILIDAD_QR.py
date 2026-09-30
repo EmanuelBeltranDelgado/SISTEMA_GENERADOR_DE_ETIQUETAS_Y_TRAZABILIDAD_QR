@@ -67,9 +67,9 @@ class AplicacionMedusaEtiquetasQR:
         self.root.state('zoomed') # Iniciar maximizado en sistemas Windows
         self.root.configure(bg="#f4f6f8")
 
-        # Carga del ícono institucional (.ico)
+        # Carga del ícono (.ico)
         dir_script = Path(__file__).resolve().parent
-        ruta_icono = dir_script / "Medusa_Ico.ico"
+        ruta_icono = dir_script / "SistemaTrazabilidad.ico"
         if ruta_icono.exists():
             try:
                 self.root.iconbitmap(ruta_icono)

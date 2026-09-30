@@ -8,6 +8,7 @@ Master, Golden y Silver.
 """
 
 import os
+from pathlib import Path
 import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -83,55 +84,38 @@ class TabTrazabilidadGMS:
         self.card_gms_preview = tk.Frame(panel_der, bg="#f0f0f0", bd=1, relief="solid", highlightthickness=1, highlightbackground="#dcdfe6")
         self.card_gms_preview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        lbl_titulo_preview = tk.Label(self.card_gms_preview, text="Vista previa 60 × 40 mm (M-G-S)", font=("Segoe UI", 9), bg="#f0f0f0", fg="#333333")
+        lbl_titulo_preview = tk.Label(self.card_gms_preview, text="Vista previa 40 × 15 mm", font=("Segoe UI", 9), bg="#f0f0f0", fg="#333333")
         lbl_titulo_preview.pack(anchor="nw", padx=8, pady=8)
 
         self.lbl_gms_preview = tk.Label(self.card_gms_preview, text="Captura los datos y pulsa GENERAR ETIQUETA", font=("Segoe UI", 10), bg="#f0f0f0", fg="#000000")
         self.lbl_gms_preview.pack(anchor="center", expand=True)
 
     def render_etiqueta_gms(self, datos):
-        """Renderiza visualmente la etiqueta para muestras M-G-S."""
-        width, height = 600, 400
+        """Renderiza una etiqueta ultra-compacta (40x15 mm) para M-G-S basada en el estilo PCB."""
+        width, height = 400, 150
         img = Image.new('RGB', (width, height), color='white')
         d = ImageDraw.Draw(img)
 
         try:
-            title_font = ImageFont.truetype("arialbd.ttf", 22)
-            medium_bold = ImageFont.truetype("arialbd.ttf", 18)
-            small_font = ImageFont.truetype("arial.ttf", 16)
+            font_title = ImageFont.truetype("arialbd.ttf", 16)
         except:
-            title_font = medium_bold = small_font = ImageFont.load_default()
+            font_title = ImageFont.load_default()
 
-        margin = 15
-
-        d.text((margin + 100, margin), "Medusa Electronic S.A de C.V", fill='black', font=title_font)
-        
-        tipo_str = f"MUESTRA {datos['tipo']}"
-        d.text((margin, margin + 44), tipo_str, fill='black', font=medium_bold)
-
-        y = margin + 85
-        spacing = 30
-
-        items = [
-            ("ID MEDUSA", datos['id_medusa']),
-            ("P/N", datos['pn']),
-            ("SERIAL", datos['serial']),
-            ("FECHA", datos['fecha'])
-        ]
-
-        for label, val in items:
-            d.text((margin, y), f"{label}: {val}"[:28], fill='black', font=small_font)
-            y += spacing
-
-        qr_content = f"TIPO: {datos['tipo']}\nID-MEDUSA: {datos['id_medusa']}\nPN: {datos['pn']}\nSERIAL: {datos['serial']}\nFECHA: {datos['fecha']}"
-        
-        qr_size = int(height * 0.45)
+        qr_content = f"TIPO-{datos['tipo']}  ID-MEDUSA-{datos['id_medusa']}  PN-{datos['pn']}  SERIAL-{datos['serial']}" 
         qr_img = QRGenerator.make(qr_content, box_size=8)
-        qr_img = qr_img.resize((qr_size, qr_size), Image.Resampling.NEAREST)
+        qr_img = qr_img.resize((120, 120), Image.Resampling.NEAREST)
         
-        img.paste(qr_img, (width - qr_size - margin - 10, height - qr_size - margin - 30))
+        # Posiciona el código QR a la derecha (mismo diseño que PCB)
+        img.paste(qr_img, (width - 135, 15))
 
-        d.rectangle((0, 0, width - 1, height - 1), outline="black", width=3)
+        # Texto a la izquierda con los datos solicitados
+        text_serial = f"Serial: {datos.get('serial', '')}"
+        text_muestra = f"Muestra: {datos.get('tipo', '')}"
+
+        # Dibujar líneas de texto
+        d.text((15, (height // 2) - 25), text_serial, fill='black', font=font_title)
+        d.text((15, (height // 2) + 5), text_muestra, fill='black', font=font_title)
+
         return img
 
     def accion_generar_etiqueta_gms(self):
@@ -148,8 +132,11 @@ class TabTrazabilidadGMS:
             messagebox.showwarning("Campos Incompletos", "Todos los campos (Tipo, ID Medusa, P/N, Serial y Fecha) son obligatorios.")
             return
 
+        # 1. Se genera y asigna la imagen PIL a self.img_gms_etiqueta_pil
         self.img_gms_etiqueta_pil = self.render_etiqueta_gms(datos)
-        img_tk = ImageTk.PhotoImage(self.img_gms_etiqueta_pil.resize((500, 333)))
+        
+        # 2. Redimensionar la vista previa al tamaño del contenedor (360x135 px)
+        img_tk = ImageTk.PhotoImage(self.img_gms_etiqueta_pil.resize((360, 135)))
         self.lbl_gms_preview.config(image=img_tk)
         self.lbl_gms_preview.image = img_tk
 
@@ -283,7 +270,7 @@ class TabTrazabilidadGMS:
                 conn.close()
 
     def mostrar_popup_etiqueta_gms(self):
-        """Muestra ventana con la etiqueta en grande."""
+        """Muestra ventana con la etiqueta en formato adecuado."""
         selected = self.tree_gms.selection()
         if not selected:
             messagebox.showwarning("Atención", "Seleccione un registro primero.")
@@ -300,14 +287,26 @@ class TabTrazabilidadGMS:
         }
 
         popup = tk.Toplevel(self.root)
-        popup.title(f"Vista Previa M-G-S - {datos['serial']}")
-        popup.geometry("800x600")
+        popup.title(f"Vista Previa - {datos['serial']}")
+        popup.geometry("450x250")  # Ventana emergente compacta
         popup.configure(bg="#f4f6f8")
         popup.resizable(False, False)
         popup.grab_set()
 
+        # Carga del ícono (.ico)
+        dir_raiz = Path(__file__).resolve().parent.parent
+        ruta_icono = dir_raiz / "SistemaTrazabilidad.ico"
+
+        if ruta_icono.exists():
+            try:
+                popup.iconbitmap(ruta_icono)
+            except Exception as e:
+                print(f"Error al cargar el icono .ico en popup: {e}")
+
         img_pil = self.render_etiqueta_gms(datos)
-        img_tk = ImageTk.PhotoImage(img_pil.resize((720, 480)))
+        
+        # Escalado a 380x142 px para adaptarse correctamente a la ventana de 450x250 px
+        img_tk = ImageTk.PhotoImage(img_pil.resize((380, 142)))
 
         lbl_img = ttk.Label(popup, image=img_tk, background="#f4f6f8")
         lbl_img.image = img_tk

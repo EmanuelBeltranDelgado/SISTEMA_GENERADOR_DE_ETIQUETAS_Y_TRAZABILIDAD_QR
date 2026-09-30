@@ -212,7 +212,7 @@ class TabProductoTerminado:
         self.card_pt_preview = tk.Frame(panel_der, bg="#f0f0f0", bd=1, relief="solid", highlightthickness=1, highlightbackground="#dcdfe6")
         self.card_pt_preview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        lbl_titulo_preview = tk.Label(self.card_pt_preview, text="Vista previa 60 × 40 mm (PT)", font=("Segoe UI", 9), bg="#f0f0f0", fg="#333333")
+        lbl_titulo_preview = tk.Label(self.card_pt_preview, text="Vista previa 60 × 40 mm", font=("Segoe UI", 9), bg="#f0f0f0", fg="#333333")
         lbl_titulo_preview.pack(anchor="nw", padx=8, pady=8)
 
         self.lbl_pt_preview = tk.Label(self.card_pt_preview, text="Captura los datos y pulsa GENERAR ETIQUETA", font=("Segoe UI", 10), bg="#f0f0f0", fg="#000000")
@@ -573,11 +573,22 @@ class TabProductoTerminado:
             return
 
         popup = tk.Toplevel(self.root)
-        popup.title(f"Vista Previa PT - {datos['id_entrega']}")
+        popup.title(f"Vista Previa - {datos['id_entrega']}")
         popup.geometry("800x600")
         popup.configure(bg="#f4f6f8")
         popup.resizable(False, False)
         popup.grab_set()
+
+        # Carga del ícono (.ico)
+        dir_raiz = Path(__file__).resolve().parent.parent
+        ruta_icono = dir_raiz / "SistemaTrazabilidad.ico"
+
+        if ruta_icono.exists():
+            try:
+                # Se le aplica directamente a la ventana emergente 'popup'
+                popup.iconbitmap(ruta_icono)
+            except Exception as e:
+                print(f"Error al cargar el icono .ico en popup: {e}")
 
         img_pil = self.render_etiqueta_pt(datos)
         img_tk = ImageTk.PhotoImage(img_pil.resize((720, 480)))

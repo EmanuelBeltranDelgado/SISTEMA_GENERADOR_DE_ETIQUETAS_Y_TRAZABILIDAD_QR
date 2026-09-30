@@ -8,6 +8,7 @@ para tarjetas electrónicas/PCB, gestión de consultas y exportación masiva.
 """
 
 import os
+from pathlib import Path
 import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -105,10 +106,10 @@ class TabTrazabilidadPCB:
         self.card_pc_preview = tk.Frame(panel_der, bg="#f0f0f0", bd=1, relief="solid", highlightthickness=1, highlightbackground="#dcdfe6")
         self.card_pc_preview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        lbl_titulo_preview = tk.Label(self.card_pc_preview, text="Vista previa etiqueta QR PCB", font=("Segoe UI", 9), bg="#f0f0f0", fg="#333333")
+        lbl_titulo_preview = tk.Label(self.card_pc_preview, text="Vista previa 40 × 15 mm", font=("Segoe UI", 9), bg="#f0f0f0", fg="#333333")
         lbl_titulo_preview.pack(anchor="nw", padx=8, pady=8)
 
-        self.lbl_pc_preview = tk.Label(self.card_pc_preview, text="Ingresa los datos para previsualizar el serial actual", font=("Segoe UI", 10), bg="#f0f0f0", fg="#000000")
+        self.lbl_pc_preview = tk.Label(self.card_pc_preview, text="Captura los datos y pulsa GENERAR ETIQUETA", font=("Segoe UI", 10), bg="#f0f0f0", fg="#000000")
         self.lbl_pc_preview.pack(anchor="center", expand=True)
 
     def render_etiqueta_pc(self, datos):
@@ -200,7 +201,7 @@ class TabTrazabilidadPCB:
         self.var_pc_lote.set("")
         self.var_pc_fecha.set(datetime.datetime.now().strftime("%d/%m/%Y"))
         self.var_pc_num_etiquetas.set("1")
-        self.lbl_pc_preview.config(image="", text="Ingresa los datos para previsualizar el serial actual")
+        self.lbl_pc_preview.config(image="", text="Captura los datos y pulsa GENERAR ETIQUETA")
         self.lbl_pc_preview.image = None
 
     def setup_tab_pc_consultar(self):
@@ -324,11 +325,22 @@ class TabTrazabilidadPCB:
         }
 
         popup = tk.Toplevel(self.root)
-        popup.title(f"Vista Previa Serial - {datos['serial']}")
+        popup.title(f"Vista Previa - {datos['serial']}")
         popup.geometry("450x250")
         popup.configure(bg="#f4f6f8")
         popup.resizable(False, False)
         popup.grab_set()
+
+        # Carga del ícono (.ico)
+        dir_raiz = Path(__file__).resolve().parent.parent
+        ruta_icono = dir_raiz / "SistemaTrazabilidad.ico"
+
+        if ruta_icono.exists():
+            try:
+                # Se le aplica directamente a la ventana emergente 'popup'
+                popup.iconbitmap(ruta_icono)
+            except Exception as e:
+                print(f"Error al cargar el icono .ico en popup: {e}")
 
         img_pil = self.render_etiqueta_pc(datos)
         img_tk = ImageTk.PhotoImage(img_pil)

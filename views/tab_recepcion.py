@@ -655,7 +655,7 @@ class TabRecepcion:
 
     def mostrar_popup_etiqueta(self):
         """Despliega una ventana emergente para visualizar en alta resolución la etiqueta seleccionada."""
-        item_id, datos = self._obtener_datos_seleccionados()
+        datos = self._obtener_datos_seleccionados()
         if not datos:
             return
 
@@ -665,6 +665,17 @@ class TabRecepcion:
         popup.configure(bg="#f4f6f8")
         popup.resizable(False, False)
         popup.grab_set()
+
+        # Carga del ícono (.ico)
+        dir_raiz = Path(__file__).resolve().parent.parent
+        ruta_icono = dir_raiz / "SistemaTrazabilidad.ico"
+
+        if ruta_icono.exists():
+            try:
+                # Se le aplica directamente a la ventana emergente 'popup'
+                popup.iconbitmap(ruta_icono)
+            except Exception as e:
+                print(f"Error al cargar el icono .ico en popup: {e}")
 
         img_pil = self.render_etiqueta(datos)
         img_tk = ImageTk.PhotoImage(img_pil.resize((720, 480)))
@@ -677,7 +688,7 @@ class TabRecepcion:
 
     def exportar_png(self):
         """Guarda la etiqueta individual seleccionada como imagen en formato PNG."""
-        item_id, datos = self._obtener_datos_seleccionados()
+        datos = self._obtener_datos_seleccionados()
         if datos:
             filepath = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Image", "*.png")], initialfile=f"Etiqueta_{datos['id_recepcion']}.png")
             if filepath:
