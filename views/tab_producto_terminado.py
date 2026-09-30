@@ -8,6 +8,7 @@ producto final preparado para cliente/embarque.
 """
 
 import os
+from pathlib import Path
 import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -43,6 +44,14 @@ class TabProductoTerminado:
         self.var_pt_estado = tk.StringVar(value="")
         self.var_pt_select_all = tk.BooleanVar(value=False)
 
+        # Variables de control para desglose de dirección de envío (emergente)
+        self.var_dir_calle = tk.StringVar(value="")
+        self.var_dir_colonia = tk.StringVar(value="")
+        self.var_dir_ciudad = tk.StringVar(value="")
+        self.var_dir_estado_prov = tk.StringVar(value="")
+        self.var_dir_cp = tk.StringVar(value="")
+        self.var_dir_pais = tk.StringVar(value="")
+
         self.img_pt_etiqueta_pil = None
         self.generar_nuevo_id_pt()
 
@@ -71,9 +80,65 @@ class TabProductoTerminado:
         self.var_pt_destino.set("")
         self.var_pt_estado.set("")
 
+        # Limpiar variables secundarias del formulario emergente de dirección
+        self.var_dir_calle.set("")
+        self.var_dir_colonia.set("")
+        self.var_dir_ciudad.set("")
+        self.var_dir_estado_prov.set("")
+        self.var_dir_cp.set("")
+        self.var_dir_pais.set("")
+
         self.img_pt_etiqueta_pil = None
         self.lbl_pt_preview.config(image="", text="Captura los datos y pulsa GENERAR ETIQUETA")
         self.lbl_pt_preview.image = None
+
+    def abrir_modal_direccion(self):
+        """Abre ventana emergente para capturar formulario de dirección de envío y No. de guía."""
+        popup = tk.Toplevel(self.root)
+        popup.title("Dirección de Envío y Guía")
+        popup.geometry("450x380")
+        popup.configure(bg="#f4f6f8")
+        popup.resizable(False, False)
+        popup.grab_set()
+
+        ttk.Label(popup, text="Dirección de Envío y No. de Guía", style="Header.TLabel").pack(pady=10)
+
+        frame_form = ttk.Frame(popup, padding=10)
+        frame_form.pack(fill=tk.BOTH, expand=True)
+
+        campos_dir = [
+            ("Calle y No.:", self.var_dir_calle),
+            ("Colonia:", self.var_dir_colonia),
+            ("Ciudad / Municipio:", self.var_dir_ciudad),
+            ("Estado / Prov.:", self.var_dir_estado_prov),
+            ("Código Postal:", self.var_dir_cp),
+            ("País:", self.var_dir_pais),
+            ("No. de Guía:", self.var_pt_no_guia)
+        ]
+
+        for i, (lbl_txt, var) in enumerate(campos_dir):
+            ttk.Label(frame_form, text=lbl_txt).grid(row=i, column=0, sticky="w", pady=3, padx=5)
+            ttk.Entry(frame_form, textvariable=var, width=30).grid(row=i, column=1, sticky="w", pady=3, padx=5)
+
+        def guardar_direccion():
+            # Concatenar componentes para formar el String completo de Destino
+            partes = [
+                self.var_dir_calle.get().strip(),
+                self.var_dir_colonia.get().strip(),
+                self.var_dir_ciudad.get().strip(),
+                self.var_dir_estado_prov.get().strip(),
+                self.var_dir_cp.get().strip(),
+                self.var_dir_pais.get().strip()
+            ]
+            destino_full = ", ".join([p for p in partes if p])
+            self.var_pt_destino.set(destino_full)
+            popup.destroy()
+
+        frame_btns = ttk.Frame(popup, padding=10)
+        frame_btns.pack(fill=tk.X)
+
+        ttk.Button(frame_btns, text="Guardar Dirección", style="Primary.TButton", command=guardar_direccion).pack(side=tk.LEFT, padx=5, expand=True)
+        ttk.Button(frame_btns, text="Cancelar", style="Secondary.TButton", command=popup.destroy).pack(side=tk.RIGHT, padx=5, expand=True)
 
     # =========================================================================
     # --- MÓDULO 3: PRODUCTO TERMINADO (PT) ---
@@ -118,18 +183,15 @@ class TabProductoTerminado:
         ttk.Entry(panel_izq, textvariable=self.var_pt_f_entrega, width=28).grid(row=row, column=1, sticky="w", pady=3, padx=(5, 0))
         row += 1
 
+        # Botón para la apertura del formulario modal de Dirección de Envío y Guía
+        btn_agregar_dir = ttk.Button(panel_izq, text="Agregar Dirección", style="Secondary.TButton", command=self.abrir_modal_direccion)
+        btn_agregar_dir.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(5, 5))
+        row += 1
+
         ttk.Label(panel_izq, text="Opcionales", font=("Segoe UI", 9, "bold", "italic")).grid(row=row, column=0, columnspan=2, sticky="w", pady=(8, 2))
         row += 1
 
-        ttk.Label(panel_izq, text="No. de guía / remisión").grid(row=row, column=0, sticky="w", pady=3)
-        ttk.Entry(panel_izq, textvariable=self.var_pt_no_guia, width=28).grid(row=row, column=1, sticky="w", pady=3, padx=(5, 0))
-        row += 1
-
-        ttk.Label(panel_izq, text="Destino / Dirección").grid(row=row, column=0, sticky="w", pady=3)
-        ttk.Entry(panel_izq, textvariable=self.var_pt_destino, width=28).grid(row=row, column=1, sticky="w", pady=3, padx=(5, 0))
-        row += 1
-
-        ttk.Label(panel_izq, text="Estado").grid(row=row, column=0, sticky="w", pady=3)
+        ttk.Label(panel_izq, text="Estado *").grid(row=row, column=0, sticky="w", pady=3)
         cb_estado_pt = ttk.Combobox(panel_izq, textvariable=self.var_pt_estado, width=26, state="readonly")
         cb_estado_pt['values'] = ("", "EMPACADO", "LISTO PARA ENVÍO", "ENVIADO")
         cb_estado_pt.grid(row=row, column=1, sticky="w", pady=3, padx=(5, 0))
@@ -163,20 +225,42 @@ class TabProductoTerminado:
         d = ImageDraw.Draw(img)
 
         try:
-            title_font = ImageFont.truetype("arialbd.ttf", 22)
             medium_bold = ImageFont.truetype("arialbd.ttf", 18)
             small_font = ImageFont.truetype("arial.ttf", 15)
         except:
-            title_font = medium_bold = small_font = ImageFont.load_default()
+            medium_bold = small_font = ImageFont.load_default()
 
         margin = 15
 
-        d.text((margin + 100, margin), "Medusa Electronic S.A de C.V", fill='black', font=title_font)
+        # Búsqueda y renderizado del logotipo en la esquina superior derecha
+        dir_base = Path(__file__).resolve().parent.parent
+        posibles_rutas = [
+            dir_base / "Medusa_Logo_Sin_Fondo.png",
+            dir_base / "assets" / "logo.png",
+            dir_base / "logo.png"
+        ]
+
+        logo_path = None
+        for ruta in posibles_rutas:
+            if ruta.exists():
+                logo_path = ruta
+                break
+
+        if logo_path:
+            logo_img = Image.open(logo_path).convert("RGBA")
+            logo_width = 180
+            aspect_ratio = logo_img.height / logo_img.width
+            logo_height = int(logo_width * aspect_ratio)
+            logo_resized = logo_img.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
+            
+            logo_x = width - margin - logo_width - 10
+            logo_y = margin
+            img.paste(logo_resized, (logo_x, logo_y), logo_resized)
         
         prod_texto = f"COD-PROD : {datos['codigo_producto']}"
-        d.text((margin, margin + 44), prod_texto[:28], fill='black', font=medium_bold)
+        d.text((margin, margin), prod_texto[:28], fill='black', font=medium_bold)
 
-        y = margin + 80
+        y = margin + 35
         spacing = 24
         
         items = [
@@ -247,7 +331,8 @@ class TabProductoTerminado:
             'codigo_producto': datos['codigo_producto'],
             'descripcion': datos['descripcion'],
             'lote': datos['lote'],
-            'fecha_entrega': datos['fecha_entrega']
+            'fecha_entrega': datos['fecha_entrega'],
+            'estado': datos['estado']
         }
 
         for campo, valor in campos_obligatorios.items():
