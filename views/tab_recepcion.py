@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import datetime
 import tkinter as tk
+import textwrap
 from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from psycopg2 import sql
@@ -292,7 +293,11 @@ class TabRecepcion:
 
         # --- 6. DESCRIPCIÓN AL PIE Y BORDE EXTERIOR ---
         if datos['descripcion']:
-            d.text((margin, height - 25), datos['descripcion'][:35], fill='black', font=small_font)
+            # Divide la descripción en líneas automáticas
+            desc_multiline = textwrap.fill(datos['descripcion'], width=35)
+            lineas = desc_multiline.count('\n') + 1
+            y_desc = height - (18 * lineas) - 10
+            d.text((margin, y_desc), desc_multiline, fill='black', font=small_font)
 
         d.rectangle((0, 0, width - 1, height - 1), outline="black", width=3)
         return img

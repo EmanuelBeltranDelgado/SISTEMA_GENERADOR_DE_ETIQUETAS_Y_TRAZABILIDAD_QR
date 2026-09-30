@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import datetime
 import tkinter as tk
+import textwrap
 from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from psycopg2 import sql
@@ -257,11 +258,12 @@ class TabProductoTerminado:
             logo_y = margin
             img.paste(logo_resized, (logo_x, logo_y), logo_resized)
         
+        # Código de producto en la parte superior
         prod_texto = f"COD-PROD : {datos['codigo_producto']}"
         d.text((margin, margin), prod_texto[:28], fill='black', font=medium_bold)
 
         y = margin + 35
-        spacing = 24
+        line_spacing = 20  # Altura por línea de texto
         
         items = [
             ("ID-PT", datos['id_entrega']),
@@ -280,11 +282,35 @@ class TabProductoTerminado:
         if datos['estado']:
             items.append(("EST", datos['estado']))
 
-        for label, val in items:
-            d.text((margin, y), f"{label}: {val}"[:28], fill='black', font=small_font)
-            y += spacing
+        # Ancho máximo en caracteres por línea para no invadir el QR o logotipo
+        max_char_width = 28
 
-        qr_content = f"ID-PT: {datos['id_entrega']}\nDN-ERP: {datos['delivery_note_erp']}\nCLI: {datos['cliente']}\nOV: {datos['orden_venta']}\nCOD-PROD: {datos['codigo_producto']}\nCANT: {datos['cantidad']}\nLOT: {datos['lote']}\nFECHA-ENTREGA: {datos['fecha_entrega']}\nGUIA: {datos['no_guia']}\nDEST: {datos['destino']}\nEST: {datos['estado']}"
+        for label, val in items:
+            texto_completo = f"{label}: {val}"
+            
+            # Para Cliente y Destino se aplica multilinea automática si sobrepasan los caracteres permitidos
+            if label in ("CLI", "DEST") and len(texto_completo) > max_char_width:
+                lineas = textwrap.wrap(texto_completo, width=max_char_width)
+                for linea in lineas:
+                    d.text((margin, y), linea, fill='black', font=small_font)
+                    y += line_spacing
+            else:
+                d.text((margin, y), texto_completo[:max_char_width], fill='black', font=small_font)
+                y += line_spacing
+
+        qr_content = (
+            f"ID-PT: {datos['id_entrega']}\n"
+            f"DN-ERP: {datos['delivery_note_erp']}\n"
+            f"CLI: {datos['cliente']}\n"
+            f"OV: {datos['orden_venta']}\n"
+            f"COD-PROD: {datos['codigo_producto']}\n"
+            f"CANT: {datos['cantidad']}\n"
+            f"LOT: {datos['lote']}\n"
+            f"FECHA-ENTREGA: {datos['fecha_entrega']}\n"
+            f"GUIA: {datos['no_guia']}\n"
+            f"DEST: {datos['destino']}\n"
+            f"EST: {datos['estado']}"
+        )
         
         qr_size = int(height * 0.42)
         qr_img = QRGenerator.make(qr_content, box_size=8)
@@ -293,7 +319,11 @@ class TabProductoTerminado:
         img.paste(qr_img, (width - qr_size - margin - 5, height - qr_size - margin - 20))
 
         if datos['descripcion']:
-            d.text((margin, height - 25), datos['descripcion'][:35], fill='black', font=small_font)
+            # Ajusta la descripción en líneas al pie de la etiqueta
+            desc_multiline = textwrap.fill(datos['descripcion'], width=35)
+            lineas = desc_multiline.count('\n') + 1
+            y_desc = height - (18 * lineas) - 10
+            d.text((margin, y_desc), desc_multiline, fill='black', font=small_font)
 
         d.rectangle((0, 0, width - 1, height - 1), outline="black", width=3)
         return img
