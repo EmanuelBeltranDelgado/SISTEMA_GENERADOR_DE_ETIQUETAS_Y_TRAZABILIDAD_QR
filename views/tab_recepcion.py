@@ -655,7 +655,7 @@ class TabRecepcion:
 
     def mostrar_popup_etiqueta(self):
         """Despliega una ventana emergente para visualizar en alta resolución la etiqueta seleccionada."""
-        datos = self._obtener_datos_seleccionados()
+        item_id, datos = self._obtener_datos_seleccionados()
         if not datos:
             return
 
@@ -688,7 +688,7 @@ class TabRecepcion:
 
     def exportar_png(self):
         """Guarda la etiqueta individual seleccionada como imagen en formato PNG."""
-        datos = self._obtener_datos_seleccionados()
+        item_id, datos = self._obtener_datos_seleccionados()
         if datos:
             filepath = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Image", "*.png")], initialfile=f"Etiqueta_{datos['id_recepcion']}.png")
             if filepath:
