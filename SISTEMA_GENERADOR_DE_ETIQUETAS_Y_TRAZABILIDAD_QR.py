@@ -62,7 +62,7 @@ class AplicacionMedusaEtiquetasQR:
         Inicializador de la ventana principal y gestor del ciclo de vida de la UI.
         """
         self.root = root
-        self.root.title("SISTEMA GENERADOR DE ETIQUETAS Y TRAZABILIDAD_QR")
+        self.root.title("SISTEMA GENERADOR DE ETIQUETAS Y TRAZABILIDAD QR")
         self.root.geometry("1920x1080")
         self.root.state('zoomed') # Iniciar maximizado en sistemas Windows
         self.root.configure(bg="#f4f6f8")
@@ -100,7 +100,7 @@ class AplicacionMedusaEtiquetasQR:
 
         lbl_titulo_app = ttk.Label(
             header_frame, 
-            text="SISTEMA GENERADOR DE ETIQUETAS Y TRAZABILIDAD_QR", 
+            text="SISTEMA GENERADOR DE ETIQUETAS Y TRAZABILIDAD QR", 
             font=("Segoe UI", 14, "bold"),
             foreground="#2c3e50"
         )
