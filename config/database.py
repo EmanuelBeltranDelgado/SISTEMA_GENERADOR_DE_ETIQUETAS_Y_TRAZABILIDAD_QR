@@ -30,12 +30,21 @@ else:
 env_path = base_dir / ".env"
 load_dotenv(dotenv_path=env_path)
 
+#DB_CONFIG = {
+#    "dbname": os.getenv("DB_NAME"),
+#    "user": os.getenv("DB_USER"),
+#    "password": os.getenv("DB_PASSWORD"),
+#    "host": os.getenv("DB_HOST"),
+#    "port": os.getenv("DB_PORT")
+#}
+
+#Configuracion para servidor de prueba local
 DB_CONFIG = {
-    "dbname": os.getenv("DB_NAME"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
-    "host": os.getenv("DB_HOST"),
-    "port": os.getenv("DB_PORT")
+    "dbname": os.getenv("DB_NAME_TEST"),
+    "user": os.getenv("DB_USER_TEST"),
+    "password": os.getenv("DB_PASSWORD_TEST"),
+    "host": os.getenv("DB_HOST_TEST"),
+    "port": os.getenv("DB_PORT_TEST")
 }
 
 def get_db_connection():
